@@ -1,6 +1,3 @@
-非常好，我會為您創建一個詳細的 README.md 文件，以便您將項目發布到 GitHub 上。以下是一個全面的 README.md 內容，包含了項目的主要信息、功能描述、安裝指南和使用說明等：
-
-```markdown
 # WMS庫存管理系統
 
 ## 項目概述
@@ -50,7 +47,7 @@ WMS庫存管理系統是一個基於PHP的Web應用程序，旨在幫助中小�
 
 1. 克隆儲存庫：
    ```
-   git clone https://github.com/yourusername/wms-inventory-system.git
+   git clone https://github.com/iain0901/wms.git
    ```
 
 2. 配置Web服務器（如Apache或Nginx）將根目錄指向項目的public文件夾。
@@ -111,7 +108,6 @@ WMS庫存管理系統是一個基於PHP的Web應用程序，旨在幫助中小�
 ## 貢獻指南
 
 我們歡迎所有形式的貢獻，包括但不限於：
-
 - 報告問題
 - 提交功能請求
 - 提交代碼修復或新功能
@@ -135,8 +131,10 @@ WMS庫存管理系統是一個基於PHP的Web應用程序，旨在幫助中小�
 
 - 項目負責人：iain
 - Email：iain@100thy.com
-- 項目 GitHub 地址：https://github.com/iain0901/wms/tree/main
+- 項目 GitHub 地址：https://github.com/iain0901/wms
 
 ## 致謝
 
 感謝所有為本項目做出貢獻的開發者和用戶。您的支持是我們不斷改進的動力。
+
+這個版本是純 Markdown 格式的，適合直接用作 GitHub 儲存庫的 README.md 文件。它保留了所有重要信息，並且格式化得當，可以在 GitHub 上良好顯示。您可以直接將這個內容保存為 `README.md` 文件，並添加到您的 GitHub 儲存庫中。
