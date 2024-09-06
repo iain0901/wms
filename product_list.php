@@ -181,5 +181,15 @@ $totalPages = ceil($totalProducts / $perPage);
         })
     }
     </script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1263866510884022"
+     crossorigin="anonymous"></script>
+<!-- 728成90 -->
+<ins class="adsbygoogle"
+     style="display:inline-block;width:728px;height:90px"
+     data-ad-client="ca-pub-1263866510884022"
+     data-ad-slot="4501375100"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
 </body>
 </html>

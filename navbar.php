@@ -16,6 +16,8 @@
                     "inventory_operation.php" => "入庫/出庫",
                     "product_import_export.php" => "數據導入/導出",
                     "inventory_check.php" => "商品盤點",
+                    "supplier_management.php" => "供應商管理",
+                "purchase_management.php" => "採購管理",
                     "my_account.php" => "我的帳號"
                 ];
                 $current_page = basename($_SERVER["PHP_SELF"]);

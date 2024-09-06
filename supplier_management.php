@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS suppliers (
     contact VARCHAR(255),
     phone VARCHAR(50),
     address TEXT,
+    status ENUM('active', 'inactive', 'blacklisted') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
@@ -66,18 +67,55 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit_supplier'])) {
     exit();
 }
 
+// 處理刪除供應商
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_supplier'])) {
+    $id = $_POST['id'];
+    $stmt = $conn->prepare("DELETE FROM suppliers WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $id, $user_id);
+    
+    if ($stmt->execute()) {
+        $_SESSION['success_message'] = "供應商刪除成功";
+    } else {
+        $_SESSION['error_message'] = "刪除供應商失敗";
+    }
+    
+    header("Location: supplier_management.php");
+    exit();
+}
+
+// 處理更新供應商狀態
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_status'])) {
+    $id = $_POST['id'];
+    $status = $_POST['status'];
+    $stmt = $conn->prepare("UPDATE suppliers SET status = ? WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("sii", $status, $id, $user_id);
+    
+    if ($stmt->execute()) {
+        $_SESSION['success_message'] = "供應商狀態更新成功";
+    } else {
+        $_SESSION['error_message'] = "更新供應商狀態失敗";
+    }
+    
+    header("Location: supplier_management.php");
+    exit();
+}
+
 // 獲取供應商列表
 $search = isset($_GET['search']) ? $_GET['search'] : '';
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $perPage = 10;
 $start = ($page - 1) * $perPage;
 
+// 獲取排序參數
+$sort = isset($_GET['sort']) ? $_GET['sort'] : 'name';
+$order = isset($_GET['order']) ? $_GET['order'] : 'ASC';
+
 $searchCondition = "";
 if (!empty($search)) {
     $searchCondition = " AND (name LIKE ? OR contact LIKE ?)";
 }
 
-$stmt = $conn->prepare("SELECT * FROM suppliers WHERE user_id = ?" . $searchCondition . " ORDER BY name LIMIT ? OFFSET ?");
+$stmt = $conn->prepare("SELECT * FROM suppliers WHERE user_id = ?" . $searchCondition . " ORDER BY " . $sort . " " . $order . " LIMIT ? OFFSET ?");
 if (!empty($search)) {
     $searchParam = "%$search%";
     $stmt->bind_param("issii", $user_id, $searchParam, $searchParam, $perPage, $start);
@@ -116,6 +154,20 @@ $totalPages = ceil($totalSuppliers / $perPage);
     <div class="container mx-auto p-6">
         <h1 class="text-3xl font-bold mb-4">供應商管理</h1>
 
+        <?php if (isset($_SESSION['success_message'])): ?>
+            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+                <span class="block sm:inline"><?php echo $_SESSION['success_message']; ?></span>
+            </div>
+            <?php unset($_SESSION['success_message']); ?>
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['error_message'])): ?>
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                <span class="block sm:inline"><?php echo $_SESSION['error_message']; ?></span>
+            </div>
+            <?php unset($_SESSION['error_message']); ?>
+        <?php endif; ?>
+
         <!-- 搜索欄 -->
         <form method="GET" class="mb-4">
             <input type="text" name="search" placeholder="搜索供應商名稱或聯繫人" value="<?php echo htmlspecialchars($search); ?>"
@@ -134,11 +186,12 @@ $totalPages = ceil($totalSuppliers / $perPage);
         <table class="min-w-full bg-white">
             <thead>
                 <tr>
-                    <th class="py-2 px-4 border-b">名稱</th>
+                    <th class="py-2 px-4 border-b"><a href="?sort=name&order=<?php echo $sort == 'name' && $order == 'ASC' ? 'DESC' : 'ASC'; ?>">名稱 <?php echo $sort == 'name' ? ($order == 'ASC' ? '▲' : '▼') : ''; ?></a></th>
                     <th class="py-2 px-4 border-b">聯繫人</th>
                     <th class="py-2 px-4 border-b">電話</th>
                     <th class="py-2 px-4 border-b">地址</th>
                     <th class="py-2 px-4 border-b">操作</th>
+                    <th class="py-2 px-4 border-b">狀態</th>
                 </tr>
             </thead>
             <tbody>
@@ -149,9 +202,15 @@ $totalPages = ceil($totalSuppliers / $perPage);
                     <td class="py-2 px-4 border-b"><?php echo htmlspecialchars($supplier['phone']); ?></td>
                     <td class="py-2 px-4 border-b"><?php echo htmlspecialchars($supplier['address']); ?></td>
                     <td class="py-2 px-4 border-b">
-                        <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($supplier)); ?>)" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded">
-                            編輯
-                        </button>
+                        <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($supplier)); ?>)" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded mr-1">編輯</button>
+                        <button onclick="confirmDelete(<?php echo $supplier['id']; ?>)" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded">刪除</button>
+                    </td>
+                    <td class="py-2 px-4 border-b">
+                        <select onchange="updateStatus(<?php echo $supplier['id']; ?>, this.value)" class="block appearance-none w-full bg-white border border-gray-400 hover:border-gray-500 px-4 py-2 pr-8 rounded shadow leading-tight focus:outline-none focus:shadow-outline">
+                            <option value="active" <?php echo $supplier['status'] == 'active' ? 'selected' : ''; ?>>活躍</option>
+                            <option value="inactive" <?php echo $supplier['status'] == 'inactive' ? 'selected' : ''; ?>>非活躍</option>
+                            <option value="blacklisted" <?php echo $supplier['status'] == 'blacklisted' ? 'selected' : ''; ?>>黑名單</option>
+                        </select>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -161,7 +220,7 @@ $totalPages = ceil($totalSuppliers / $perPage);
         <!-- 分頁 -->
         <div class="mt-4">
             <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                <a href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>" 
+                <a href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&sort=<?php echo $sort; ?>&order=<?php echo $order; ?>" 
                    class="inline-block bg-blue-500 text-white px-3 py-1 rounded <?php echo $i === $page ? 'bg-blue-700' : ''; ?>">
                     <?php echo $i; ?>
                 </a>
@@ -270,6 +329,56 @@ $totalPages = ceil($totalSuppliers / $perPage);
 
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
+        }
+
+        function confirmDelete(id) {
+            if (confirm("確定要刪除這個供應商嗎？")) {
+                var form = document.createElement("form");
+                form.method = "POST";
+                form.action = "supplier_management.php";
+
+                var input = document.createElement("input");
+                input.type = "hidden";
+                input.name = "delete_supplier";
+                input.value = "1";
+                form.appendChild(input);
+
+                var idInput = document.createElement("input");
+                idInput.type = "hidden";
+                idInput.name = "id";
+                idInput.value = id;
+                form.appendChild(idInput);
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        function updateStatus(id, status) {
+            var form = document.createElement("form");
+            form.method = "POST";
+            form.action = "supplier_management.php";
+
+            var input = document.createElement("input");
+            input.type = "hidden";
+            input.name = "update_status";
+            input.value = "1";
+            form.appendChild(input);
+
+            var idInput = document.createElement("input");
+            idInput.type = "hidden";
+            idInput.name = "id";
+            idInput.value = id;
+            form.appendChild(idInput);
+
+            var statusInput = document.createElement("input");
+            statusInput.type = "hidden";
+            statusInput.name = "status";
+            statusInput.value = status;
+            form.appendChild(statusInput);
+
+            document.body.appendChild(form);
+            form.submit();
         }
     </script>
 </body>
