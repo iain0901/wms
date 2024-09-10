@@ -116,18 +116,22 @@ foreach ($notes_lines as $line) {
     $y += 20;
 }
 
-// 保存圖片
+// 準備保存圖片
 $image_dir = '/www/wwwroot/142.171.36.4/purchase_order_images/';
 if (!file_exists($image_dir)) {
-    if (!mkdir($image_dir, 0755, true)) {
-        error_log("無法創建圖片目錄: $image_dir");
-        die("無法創建圖片目錄");
-    }
-    system("chmod 777 $image_dir");
+    error_log("圖片目錄不存在: $image_dir");
+    die("圖片目錄不存在");
 }
+
+if (!is_writable($image_dir)) {
+    error_log("圖片目錄不可寫: $image_dir");
+    die("圖片目錄不可寫");
+}
+
 $image_filename = 'purchase_order_' . $order_id . '.png';
 $image_path = $image_dir . $image_filename;
 
+// 保存圖片
 if (!imagepng($image, $image_path)) {
     error_log("無法保存圖片: $image_path");
     die("無法保存圖片");
@@ -147,6 +151,11 @@ if ($filesize === false || $filesize == 0) {
     die("生成的圖片文件無效");
 }
 
+// 日誌記錄
+error_log("當前PHP執行用戶: " . (function_exists("posix_getpwuid") ? posix_getpwuid(posix_geteuid())["name"] : "Unknown"));
+error_log("圖片目錄權限: " . substr(sprintf('%o', fileperms($image_dir)), -4));
+error_log("圖片文件權限: " . substr(sprintf('%o', fileperms($image_path)), -4));
+
 // 提供下載
 header('Content-Description: File Transfer');
 header('Content-Type: image/png');
@@ -161,3 +170,26 @@ if (readfile($image_path) === false) {
     die("無法讀取生成的圖片文件");
 }
 exit;
+
+// 在文件开头添加以下函数
+function getServerInfo() {
+    $info = [];
+    $info['PHP Version'] = phpversion();
+    $info['Server Software'] = $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown';
+    $info['Server Name'] = $_SERVER['SERVER_NAME'] ?? 'Unknown';
+    $info['Document Root'] = $_SERVER['DOCUMENT_ROOT'] ?? 'Unknown';
+    $info['Current Script'] = $_SERVER['SCRIPT_FILENAME'] ?? 'Unknown';
+    return $info;
+}
+
+// 在保存图片之前添加以下代码
+$serverInfo = getServerInfo();
+foreach ($serverInfo as $key => $value) {
+    error_log("$key: $value");
+}
+
+error_log("Image directory: " . $image_dir);
+error_log("Image directory exists: " . (file_exists($image_dir) ? 'Yes' : 'No'));
+error_log("Image directory is writable: " . (is_writable($image_dir) ? 'Yes' : 'No'));
+error_log("Image directory permissions: " . substr(sprintf('%o', fileperms($image_dir)), -4));
+

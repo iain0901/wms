@@ -1,4 +1,6 @@
 <?php
+session_start();
+
 function isLoggedIn() {
     return isset($_SESSION['user_id']);
 }
@@ -8,6 +10,13 @@ function requireLogin() {
         header("Location: login.php");
         exit();
     }
+}
+
+function getCurrentUserId() {
+    if (isLoggedIn()) {
+        return $_SESSION['user_id'];
+    }
+    return null;
 }
 
 function login($username, $password) {
@@ -30,4 +39,3 @@ function logout() {
     session_unset();
     session_destroy();
 }
-?>

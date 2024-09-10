@@ -1,4 +1,7 @@
 <?php
+error_reporting(E_ALL);
+ini_set("display_errors", 1);
+
 session_start();
 require_once 'config.php';
 require_once 'auth.php';
@@ -6,6 +9,28 @@ require_once 'auth.php';
 requireLogin();
 
 $user_id = getCurrentUserId();
+
+// 檢查表是否存在
+$tables = ["purchase_orders", "purchase_order_items"];
+foreach ($tables as $table) {
+    $result = $conn->query("SHOW TABLES LIKE '".$table."'");
+    if($result->num_rows == 0) {
+        die("錯誤：表 ".$table." 不存在。請確保已正確創建所有必要的數據庫表。");
+    }
+}
+
+$status_options = [
+    "pending" => "待處理",
+    "approved" => "已批准",
+    "shipped" => "已發貨",
+    "received" => "已收貨",
+    "cancelled" => "已取消"
+];
+
+// 處理創建新採購訂單
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_order'])) {
+    // ... [保留原有的訂單創建邏輯] ...
+}
 
 // 獲取採購訂單列表
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -31,13 +56,19 @@ $totalRow = $totalResult->fetch_assoc();
 $totalOrders = $totalRow['total'];
 $totalPages = ceil($totalOrders / $perPage);
 
-$status_options = [
-    "pending" => "待處理",
-    "approved" => "已批准",
-    "shipped" => "已發貨",
-    "received" => "已收貨",
-    "cancelled" => "已取消"
-];
+// 獲取供應商列表（用於創建新訂單）
+$supplierStmt = $conn->prepare("SELECT id, name FROM suppliers WHERE user_id = ?");
+$supplierStmt->bind_param("i", $user_id);
+$supplierStmt->execute();
+$supplierResult = $supplierStmt->get_result();
+$suppliers = $supplierResult->fetch_all(MYSQLI_ASSOC);
+
+// 獲取產品列表（用於創建新訂單）
+$productStmt = $conn->prepare("SELECT id, name, purchase_price FROM products WHERE user_id = ?");
+$productStmt->bind_param("i", $user_id);
+$productStmt->execute();
+$productResult = $productStmt->get_result();
+$products = $productResult->fetch_all(MYSQLI_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -69,9 +100,9 @@ $status_options = [
         <?php endif; ?>
 
         <!-- 創建新採購訂單按鈕 -->
-        <a href="create_purchase_order.php" class="mb-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded inline-block">
+        <button onclick="openCreateOrderModal()" class="mb-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
             創建新採購訂單
-        </a>
+        </button>
 
         <!-- 採購訂單列表 -->
         <table class="min-w-full bg-white">
@@ -120,28 +151,6 @@ $status_options = [
         </div>
     </div>
 
-    <script>
-    function updateOrderStatus(orderId, newStatus) {
-        fetch("update_order_status.php", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: `order_id=${orderId}&status=${newStatus}`,
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-            } else {
-                alert("更新失敗：" + data.message);
-            }
-        })
-        .catch((error) => {
-            console.error("Error:", error);
-            alert("發生錯誤，請稍後再試");
-        });
-    }
-    </script>
+    <!-- 創建新採購訂單模態框 -->
 </body>
 </html>
